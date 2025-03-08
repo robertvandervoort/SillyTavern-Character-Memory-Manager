@@ -1,0 +1,92 @@
+.memory-manager-settings {
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.memory-manager-block {
+    margin-bottom: 15px;
+}
+
+.memory-manager-block label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.memory-manager-block input[type="text"],
+.memory-manager-block input[type="number"],
+.memory-manager-block input[type="password"],
+.memory-manager-block textarea {
+    width: 100%;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+.memory-manager-hint {
+    font-size: 0.8em;
+    color: var(--text-500);
+    margin-top: 3px;
+}
+
+.memory-manager-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 15px;
+    border-radius: 4px;
+    z-index: 1000;
+    font-weight: bold;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    transition: opacity 0.3s ease-in-out;
+}
+
+.memory-manager-notification.success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.memory-manager-notification.error {
+    background-color: #F44336;
+    color: white;
+}
+
+.checkbox_label {
+    display: flex !important;
+    align-items: center;
+}
+
+.checkbox_label input {
+    margin-right: 10px;
+}
+
+/* Drawer styles */
+.inline-drawer {
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.inline-drawer-header {
+    background-color: var(--background-secondary);
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.inline-drawer-content {
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+.inline-drawer-icon {
+    transition: transform 0.3s ease;
+}
+
+.inline-drawer-icon.up {
+    transform: rotate(180deg);
+}
