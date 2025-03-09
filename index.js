@@ -1,4 +1,4 @@
-import { extension_settings, getContext, saveSettingsDebounced } from "../../../script.js";
+import { extension_settings, getContext, saveSettingsDebounced } from "../../../../script.js";
 import { callPopup, getRequestHeaders } from "../../../../script.js";
 import { summarizeChat } from "./summarization-service.js";
 import { updateCharacterNotes, isNewInformation } from "./memory-manager.js";
