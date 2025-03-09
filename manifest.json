@@ -9,5 +9,6 @@
     "version": "1.0.0",
     "homePage": "https://github.com/robertvandervoort/SillyTavern-Character-Memory-Manager",
     "description": "Creates persistent character memories by summarizing chats and updating character notes with important details.",
-    "autoload": true
+    "autoload": true,
+    "extension_api_version": 1
 }
