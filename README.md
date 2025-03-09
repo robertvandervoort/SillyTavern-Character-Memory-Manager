@@ -1,78 +1,63 @@
-# SillyTavern Character Memory Manager
+# Character Memory Manager for SillyTavern
 
 A SillyTavern extension that creates intelligent, persistent character memories by dynamically summarizing chat interactions and maintaining evolving character notes.
 
-![Character Memory Manager](memory-manager-preview.png)
-
 ## Features
 
-- **Automatic Chat Summarization**: Periodically summarizes conversations at configurable intervals.
-- **Intelligent Memory Update**: Extracts new information from summaries and adds it to character notes.
-- **Timestamped Memory Entries**: Each memory update is clearly timestamped for easy reference.
-- **Customizable Settings**: Configure summarization frequency, notifications, and more.
-- **External Model Support**: Optional support for using external AI models for summarization.
-- **Slash Command**: Use `/memoryupdate` to manually trigger the memory update process.
+- **Automatic Summarization**: Periodically summarizes conversations to extract important details
+- **Smart Memory Integration**: Detects new information and adds it to character notes
+- **Configurable Intervals**: Choose how often to update character memories
+- **Manual Updates**: Trigger memory updates on demand with the `/memoryupdate` command
+- **Notification System**: Get informed when memories are updated
+- **Custom Prompts**: Configure the summarization prompt to your liking
+- **External API Support**: Use your own API for summarization
 
 ## Installation
 
-### Option 1: Install from SillyTavern's Extensions Installer
-1. Go to Extensions tab in SillyTavern
-2. Find "Character Memory Manager" in the list
-3. Click "Install"
+1. Download this repository as a ZIP file
+2. Extract the folder to `SillyTavern/public/scripts/extensions/third-party/`
+3. Rename the extracted folder to `SillyTavern-Character-Memory-Manager` if necessary
 4. Restart SillyTavern
-
-### Option 2: Manual Installation
-1. Clone this repository into the `public/scripts/extensions/third-party/` folder of your SillyTavern installation:
-   ```
-   cd public/scripts/extensions/third-party/
-   git clone https://github.com/robertvandervoort/SillyTavern-Character-Memory-Manager.git
-   ```
-2. Restart SillyTavern
-3. Enable the extension in the Extensions tab
+5. Enable the extension in SillyTavern's Extensions menu
 
 ## Usage
 
-1. Enable the extension in SillyTavern's Extensions settings
-2. Configure your preferred settings:
-   - **Enabled**: Turn the memory manager on/off
-   - **Messages Before Summarization**: How many messages should pass before triggering a summary (default: 20)
-   - **Show Notifications**: Enable/disable on-screen notifications when memories are updated
-   - **Use Separate Model**: Toggle to use an external API for summarization
-   - **Summarization Prompt**: Customize the prompt used for generating summaries
+1. Configure the extension settings:
+   - Set the message count threshold for automatic summarization
+   - Toggle notifications
+   - Enable/disable separate model for summarization
+   - Customize the summarization prompt
 
-3. Chat with your character as normal - memories will automatically update based on your configured message count
-4. Use the `/memoryupdate` slash command anytime to force a memory update
+2. Start chatting with your character! The extension will automatically:
+   - Track messages
+   - Summarize conversations when the threshold is reached
+   - Update character notes with new information
+
+3. Use the `/memoryupdate` slash command to manually trigger a memory update at any time.
+
+## Configuration
+
+### Basic Settings
+
+- **Enable/Disable**: Turn the extension on or off
+- **Message Count**: Number of messages before triggering summarization (default: 20)
+- **Show Notifications**: Display notification popups when memories are updated
+
+### Advanced Settings
+
+- **Use Separate Model**: Use an external API for summarization instead of the current SillyTavern model
+- **Model Endpoint**: URL to your chat completions API (OpenAI-compatible format)
+- **API Key**: Your API key for authentication
+- **Summarization Prompt**: Template for how summaries should be generated
 
 ## How It Works
 
-1. After a configured number of messages, the extension triggers a summarization process.
-2. Recent messages are analyzed and summarized using either SillyTavern's current model or an external API.
-3. The summary is compared to existing character notes to identify new information.
-4. New information is formatted with timestamps and bullet points, then appended to character notes.
-5. The updated notes are saved to the character card, ensuring persistence across chat sessions.
-
-## Customizing the Summarization Prompt
-
-The default prompt is designed to extract key information from conversations, but you can customize it to focus on specific aspects you want to capture. Use these placeholders in your custom prompt:
-
-- `{{user}}` - Will be replaced with the user's name
-- `{{char}}` - Will be replaced with the character's name
-- `{{count}}` - Will be replaced with the number of messages being summarized
-
-## External Model Configuration
-
-For better summarization results, you can configure the extension to use an external AI model:
-
-1. Enable "Use separate model for summarization"
-2. Enter the API endpoint (e.g., for OpenAI: `https://api.openai.com/v1/chat/completions`)
-3. Enter your API key if required
-4. The extension will then use this model for generating summaries
+1. **Monitoring**: The extension counts messages as you chat
+2. **Summarization**: When the threshold is reached, it generates a summary of the recent conversation
+3. **Analysis**: It checks if the summary contains new information not already in character notes
+4. **Update**: If new information is found, it adds it to the character's notes with a timestamp
+5. **Persistence**: The updated character notes are saved to the character card
 
 ## License
 
-MIT
-
-## Credits
-
-- Created by Robert Vandervoort
-- Built for the SillyTavern community
+MIT License

@@ -1,13 +1,17 @@
-// We'll access these functions through the global window object instead of imports
-// This ensures better compatibility with SillyTavern's extension system
+/**
+ * Summarization Service
+ * Handles generating summaries of chat conversations
+ */
+
+import { callPopup } from '../../../../script.js';
 
 /**
- * Summarize chat messages using the configured model
+ * Summarize a chat conversation
  * @param {Array} messages - Array of chat messages
  * @param {string} characterName - Name of the character
  * @param {string} userName - Name of the user
  * @param {string} promptTemplate - Template for the summarization prompt
- * @param {boolean} useSeparateModel - Whether to use a separate model for summarization
+ * @param {boolean} useSeparateModel - Whether to use a separate model
  * @param {string} modelEndpoint - Endpoint for the separate model
  * @param {string} apiKey - API key for the separate model
  * @returns {Promise<string>} - Summarized chat
@@ -22,32 +26,27 @@ export async function summarizeChat(
     apiKey = ''
 ) {
     try {
-        // Format messages for prompt
+        // Format the messages for the summary
         const formattedMessages = messages.map(msg => {
-            const name = msg.name === characterName ? characterName : userName;
-            return `${name}: ${msg.mes}`;
+            const speaker = msg.is_user ? userName : characterName;
+            return `${speaker}: ${msg.mes}`;
         }).join('\n');
         
-        // Create the summarization prompt
-        const prompt = promptTemplate
-            .replace('{{user}}', userName)
-            .replace('{{char}}', characterName)
-            .replace('{{count}}', messages.length);
-            
-        // Prepare the system message and content
-        const systemMessage = `You are a summarization assistant. Your task is to extract key information from conversations. ${prompt}`;
-        const userMessage = `Recent conversation:\n${formattedMessages}`;
+        // Create the system message
+        const systemMessage = promptTemplate
+            .replace(/{{char}}/g, characterName)
+            .replace(/{{user}}/g, userName)
+            .replace(/{{count}}/g, messages.length);
         
+        // Decide which method to use for summarization
         if (useSeparateModel && modelEndpoint) {
-            // Use separate model with its own endpoint
-            return await callExternalModel(systemMessage, userMessage, modelEndpoint, apiKey);
+            return await callExternalModel(systemMessage, formattedMessages, modelEndpoint, apiKey);
         } else {
-            // Use the currently loaded model in SillyTavern
-            return await callCurrentModel(systemMessage, userMessage);
+            return await callCurrentModel(systemMessage, formattedMessages);
         }
     } catch (error) {
-        console.error('Error summarizing chat:', error);
-        throw new Error('Failed to summarize chat: ' + error.message);
+        console.error('Memory Manager: Summarization error', error);
+        throw error;
     }
 }
 
@@ -59,32 +58,33 @@ export async function summarizeChat(
  */
 async function callCurrentModel(systemMessage, userMessage) {
     try {
-        // Use SillyTavern's current API to generate a response
-        const response = await fetch('/api/extra/generate', {
-            method: 'POST',
-            headers: window.getRequestHeaders ? window.getRequestHeaders() : { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: userMessage,
-                system: systemMessage,
-                max_tokens: 500,
-                temperature: 0.7,
-                stop: [],
-                top_p: 1,
-                top_k: 0,
-                frequency_penalty: 0.01,
-                presence_penalty: 0.01,
-            }),
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}`);
+        // Check if the ST API function exists
+        if (typeof generateQuietPrompt !== 'function') {
+            console.warn('Memory Manager: generateQuietPrompt not available, using fallback');
+            // Fallback: show a popup asking the user to summarize
+            const result = await callPopup(
+                `<h3>Memory Manager needs to summarize recent messages</h3>
+                <p>System Instruction: ${systemMessage}</p>
+                <p>Please summarize:</p>
+                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">${userMessage}</div>
+                <textarea id="summary_input" style="width: 100%; height: 100px;"></textarea>`,
+                'input'
+            );
+            return result || '';
         }
         
-        const data = await response.json();
-        return data.text || data.response || '';
+        // Use SillyTavern's API to generate a summarization
+        const messages = [
+            { role: 'system', content: systemMessage },
+            { role: 'user', content: userMessage }
+        ];
+        
+        // Call the ST API (may vary depending on ST version)
+        const response = await generateQuietPrompt(messages, null, 2000);
+        return response.generation || '';
     } catch (error) {
-        console.error('Error calling current model:', error);
-        throw error;
+        console.error('Memory Manager: Error calling current model', error);
+        return '';
     }
 }
 
@@ -98,60 +98,45 @@ async function callCurrentModel(systemMessage, userMessage) {
  */
 async function callExternalModel(systemMessage, userMessage, modelEndpoint, apiKey) {
     try {
-        const headers = {
-            'Content-Type': 'application/json',
-        };
-        
-        // Add API key if provided
-        if (apiKey) {
-            headers['Authorization'] = `Bearer ${apiKey}`;
-        }
-        
-        // Most APIs follow a similar format, assuming OpenAI-like API structure
-        const payload = {
-            model: "gpt-3.5-turbo", // Default model, could be overridden by API
+        // Create the request body
+        const requestBody = {
+            model: 'gpt-3.5-turbo', // Default model, can be overridden by the API
             messages: [
-                {
-                    role: "system",
-                    content: systemMessage
-                },
-                {
-                    role: "user",
-                    content: userMessage
-                }
+                { role: 'system', content: systemMessage },
+                { role: 'user', content: userMessage }
             ],
             max_tokens: 500,
-            temperature: 0.7,
+            temperature: 0.7
         };
         
+        // Make the API request
         const response = await fetch(modelEndpoint, {
             method: 'POST',
-            headers: headers,
-            body: JSON.stringify(payload),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': apiKey ? `Bearer ${apiKey}` : undefined
+            },
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`External API error: ${response.status} - ${errorText}`);
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
         
         // Handle different API response formats
-        if (data.choices && data.choices[0]) {
-            return data.choices[0].message?.content || '';
-        } else if (data.output) {
-            return data.output;
-        } else if (data.response) {
-            return data.response;
-        } else if (data.text) {
-            return data.text;
-        } else {
-            console.warn('Unexpected API response format:', data);
-            return JSON.stringify(data); // Return raw output if format is unknown
+        if (data.choices && data.choices.length > 0) {
+            if (data.choices[0].message) {
+                return data.choices[0].message.content;
+            } else if (data.choices[0].text) {
+                return data.choices[0].text;
+            }
         }
+        
+        throw new Error('Unexpected API response format');
     } catch (error) {
-        console.error('Error calling external model:', error);
+        console.error('Memory Manager: External model API error', error);
         throw error;
     }
 }

@@ -1,6 +1,8 @@
 import { eventSource, event_types, saveSettingsDebounced, getContext } from '../../../../script.js';
 import { registerSlashCommand } from '../../../slash-commands.js';
 import { extension_settings } from '../../../extensions.js';
+import { summarizeChat } from './summarization-service.js';
+import { updateCharacterNotes, isNewInformation } from './memory-manager.js';
 
 /**
  * Character Memory Manager Extension
@@ -65,25 +67,92 @@ function showNotification(message, isError = false) {
     }
 }
 
-// Placeholder for memory update function
+/**
+ * Main logic to check and update memories
+ */
 async function checkAndUpdateMemories() {
-    if (!settings.enabled) {
+    // Prevent multiple simultaneous runs
+    if (processingMemory || !settings.enabled) {
         return;
     }
     
-    // Increment message counter
-    messageCounter++;
-    
-    // If we've reached the threshold for summarization
-    if (messageCounter >= settings.messagesBeforeSummarize) {
-        if (settings.showNotifications) {
-            showNotification("Memory update would trigger here in the full implementation");
+    try {
+        // Get chat context from SillyTavern
+        const context = getContext();
+        if (!context || !context.chat || !context.chat.length) {
+            return;
         }
         
-        console.log(`${displayName}: Would update memories after ${messageCounter} messages`);
+        // Increment message counter
+        messageCounter++;
         
-        // Reset the counter
-        messageCounter = 0;
+        // Check if we've reached threshold
+        if (messageCounter >= settings.messagesBeforeSummarize) {
+            processingMemory = true;
+            
+            // Show notification
+            if (settings.showNotifications) {
+                showNotification("Updating character memories...");
+            }
+            
+            try {
+                // Get messages to summarize
+                const lastMessages = context.chat.slice(-settings.messagesBeforeSummarize);
+                
+                // Get character and user names
+                const characterName = context.name2;
+                const userName = context.name1;
+                
+                // Generate summary
+                const summarizedChat = await summarizeChat(
+                    lastMessages, 
+                    characterName, 
+                    userName, 
+                    settings.summarizationPrompt,
+                    settings.useSeparateModel,
+                    settings.separateModelEndpoint,
+                    settings.separateModelApiKey
+                );
+                
+                console.log(`${displayName}: Generated summary:`, summarizedChat);
+                
+                // Get character info to check against existing notes
+                const characterInfo = context.characters[context.characterId];
+                const characterNotes = characterInfo?.data?.character_notes || "";
+                const userPersona = context.persona_description || "";
+                
+                // See if we have new information
+                const newInformation = isNewInformation(summarizedChat, characterNotes, userPersona);
+                
+                if (newInformation) {
+                    // Update the character notes
+                    await updateCharacterNotes(context.characterId, characterNotes, newInformation);
+                    
+                    // Success notification
+                    if (settings.showNotifications) {
+                        showNotification("Character memories updated with new information!");
+                    }
+                } else {
+                    // No new info notification
+                    if (settings.showNotifications) {
+                        showNotification("No new information to add to character memories.");
+                    }
+                }
+                
+                // Reset counter
+                messageCounter = 0;
+            } catch (error) {
+                console.error(`${displayName} memory update error:`, error);
+                if (settings.showNotifications) {
+                    showNotification("Failed to update character memories: " + error.message, true);
+                }
+            } finally {
+                processingMemory = false;
+            }
+        }
+    } catch (error) {
+        console.error(`${displayName} checkAndUpdateMemories error:`, error);
+        processingMemory = false;
     }
 }
 
@@ -100,11 +169,11 @@ registerSlashCommand('memoryupdate', async (args) => {
         return `${displayName} is disabled. Enable it in the extensions settings first.`;
     }
     
-    if (settings.showNotifications) {
-        showNotification("Manual memory update triggered");
-    }
+    // Force memory update by setting message counter to threshold
+    messageCounter = settings.messagesBeforeSummarize;
+    await checkAndUpdateMemories();
     
-    return "Memory update process triggered (placeholder for full implementation)";
+    return "Memory update process triggered.";
 }, [], "Trigger memory update for the current character");
 
 // Settings UI

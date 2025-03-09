@@ -1,41 +1,58 @@
-// We'll access these functions through the global window object instead of imports
-// This ensures better compatibility with SillyTavern's extension system
+/**
+ * Memory Manager Module
+ * Handles checking for new information and updating character notes
+ */
+
+import { saveSettingsDebounced, callPopup, characters } from '../../../../script.js';
+import { formatDate } from './script.js';
 
 /**
- * Check if the summary contains information not already in character notes or user persona
- * @param {string} summary - The summary of recent chat messages
- * @param {string} characterNotes - Existing character notes
- * @param {string} userPersona - User persona description
- * @returns {string|null} - New information to be added, or null if no new info
+ * Check if the summary contains new information not already in character notes
+ * @param {string} summary - The chat summary
+ * @param {string} characterNotes - Current character notes
+ * @param {string} userPersona - User persona information
+ * @returns {string|null} - New information if found, null otherwise
  */
 export function isNewInformation(summary, characterNotes, userPersona) {
-    if (!summary || !summary.trim()) {
+    if (!summary || summary.trim().length === 0) {
+        console.log('Memory Manager: No summary provided');
         return null;
     }
-
-    // For a very basic check, split summary into sentences
-    const summaryPoints = summary.split(/\.\s+/);
-    let newInfo = [];
-
-    // Check each point in the summary
-    for (const point of summaryPoints) {
-        if (!point.trim()) continue;
-        
-        // If this point is not in character notes and not in user persona, it's new
-        if (!characterNotes.toLowerCase().includes(point.toLowerCase()) && 
-            !userPersona.toLowerCase().includes(point.toLowerCase())) {
-            newInfo.push(point.trim());
-        }
-    }
-
-    if (newInfo.length === 0) {
-        return null;
-    }
-
-    // Format the new information
-    const formattedInfo = `\n\n--- Memory Update (${new Date().toLocaleString()}) ---\n${newInfo.map(info => `• ${info}`).join('\n')}`;
     
-    return formattedInfo;
+    // If there are no existing notes, all information is new
+    if (!characterNotes || characterNotes.trim().length === 0) {
+        return summary;
+    }
+    
+    // Simple heuristic: Check if any sentences in the summary are not in the notes
+    // This is a basic implementation that could be improved with more sophisticated NLP
+    const summaryItems = summary.split(/\.\s+|\n+/).filter(item => 
+        item && item.trim().length > 10  // Only consider meaningful sentences
+    );
+    
+    const newItems = summaryItems.filter(item => {
+        // Check if this information is already in the notes
+        const itemLower = item.toLowerCase().trim();
+        const notesLower = characterNotes.toLowerCase();
+        
+        // If the exact sentence or something very similar exists in notes, skip it
+        return !notesLower.includes(itemLower) && 
+               !notesLower.includes(itemLower.substring(0, itemLower.length - 5));
+    });
+    
+    if (newItems.length === 0) {
+        return null;
+    }
+    
+    // Format the new information with bullet points and a date
+    const date = formatDate(new Date());
+    let newInformation = `\n\n--- Memory Update (${date}) ---\n`;
+    
+    newItems.forEach(item => {
+        newInformation += `• ${item.trim()}.\n`;
+    });
+    
+    return newInformation;
 }
 
 /**
@@ -47,47 +64,55 @@ export function isNewInformation(summary, characterNotes, userPersona) {
  */
 export async function updateCharacterNotes(characterId, currentNotes, newInformation) {
     try {
-        // Append new information to current notes
-        const updatedNotes = currentNotes + newInformation;
-        
-        // Get the current character data
-        const response = await fetch(`/api/characters/get`, {
-            method: 'POST',
-            headers: window.getRequestHeaders ? window.getRequestHeaders() : { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ character_id: characterId }),
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Failed to get character data: ${response.statusText}`);
+        if (!characterId || !newInformation) {
+            console.error('Memory Manager: Missing character ID or new information');
+            return false;
         }
         
-        const characterData = await response.json();
+        // Find the character in the current character array
+        const character = characters.find(char => char.avatar === characterId);
+        
+        if (!character) {
+            console.error(`Memory Manager: Character with ID ${characterId} not found`);
+            return false;
+        }
         
         // Update the character notes
-        characterData.data.character_notes = updatedNotes;
+        const updatedNotes = currentNotes ? currentNotes + newInformation : newInformation;
         
-        // Save the updated character
-        const saveResponse = await fetch('/api/characters/edit', {
-            method: 'PUT',
-            headers: window.getRequestHeaders ? window.getRequestHeaders() : { 'Content-Type': 'application/json' },
-            body: JSON.stringify(characterData),
-        });
-        
-        if (!saveResponse.ok) {
-            throw new Error(`Failed to save character data: ${saveResponse.statusText}`);
+        // Update character data
+        if (!character.data) {
+            character.data = {};
         }
         
-        // Update the UI if the character is currently loaded
-        if (window.getCurrentChatId() === characterId) {
-            const textarea = document.getElementById('character_notes');
-            if (textarea) {
-                textarea.value = updatedNotes;
-            }
-        }
+        character.data.character_notes = updatedNotes;
+        
+        // Save the character file
+        await updateCharacter(character);
         
         return true;
     } catch (error) {
-        console.error('Error updating character notes:', error);
+        console.error('Memory Manager: Error updating character notes', error);
         return false;
+    }
+}
+
+/**
+ * Update the character file
+ * @param {object} character - Character object to update
+ * @returns {Promise<void>}
+ */
+async function updateCharacter(character) {
+    try {
+        // Check if the saveCharacterDebounced function exists
+        if (typeof saveCharacterDebounced === 'function') {
+            await saveCharacterDebounced();
+        } else {
+            // Fallback to manual character saving via API
+            await callPopup('Character notes updated. Please save the character manually.', 'text');
+        }
+    } catch (error) {
+        console.error('Memory Manager: Error saving character', error);
+        throw error;
     }
 }
