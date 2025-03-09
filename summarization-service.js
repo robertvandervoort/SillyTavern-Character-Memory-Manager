@@ -1,4 +1,5 @@
-import { getRequestHeaders } from "../../../../script.js";
+// We'll access these functions through the global window object instead of imports
+// This ensures better compatibility with SillyTavern's extension system
 
 /**
  * Summarize chat messages using the configured model
@@ -61,7 +62,7 @@ async function callCurrentModel(systemMessage, userMessage) {
         // Use SillyTavern's current API to generate a response
         const response = await fetch('/api/extra/generate', {
             method: 'POST',
-            headers: getRequestHeaders(),
+            headers: window.getRequestHeaders ? window.getRequestHeaders() : { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: userMessage,
                 system: systemMessage,

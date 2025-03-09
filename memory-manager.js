@@ -1,5 +1,5 @@
-import { getRequestHeaders } from "../../../../script.js";
-import { callPopup } from "../../../../script.js";
+// We'll access these functions through the global window object instead of imports
+// This ensures better compatibility with SillyTavern's extension system
 
 /**
  * Check if the summary contains information not already in character notes or user persona
@@ -53,7 +53,7 @@ export async function updateCharacterNotes(characterId, currentNotes, newInforma
         // Get the current character data
         const response = await fetch(`/api/characters/get`, {
             method: 'POST',
-            headers: getRequestHeaders(),
+            headers: window.getRequestHeaders ? window.getRequestHeaders() : { 'Content-Type': 'application/json' },
             body: JSON.stringify({ character_id: characterId }),
         });
         
@@ -69,7 +69,7 @@ export async function updateCharacterNotes(characterId, currentNotes, newInforma
         // Save the updated character
         const saveResponse = await fetch('/api/characters/edit', {
             method: 'PUT',
-            headers: getRequestHeaders(),
+            headers: window.getRequestHeaders ? window.getRequestHeaders() : { 'Content-Type': 'application/json' },
             body: JSON.stringify(characterData),
         });
         
