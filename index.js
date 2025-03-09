@@ -132,15 +132,22 @@ function showNotification(message, isError = false) {
 
 // Create the HTML elements for the extension
 function createUI() {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.id = 'memory-manager-notification';
+    notification.className = 'memory-manager-notification';
+    notification.style.display = 'none';
+    document.body.appendChild(notification);
+
+    // Create settings HTML
     const settingsHtml = document.createElement('div');
     settingsHtml.className = 'memory-manager-settings';
     settingsHtml.innerHTML = `
-        <div class="inline-drawer">
-            <div class="inline-drawer-toggle inline-drawer-header">
-                <b>Character Memory Manager</b>
-                <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        <div id="memory-manager-settings-block" class="settings-block">
+            <div class="settings-block-title">
+                <div class="settings_title">Character Memory Manager</div>
             </div>
-            <div class="inline-drawer-content">
+            <div class="settings-block-content">
                 <div class="memory-manager-block">
                     <label class="checkbox_label" for="memory-manager-enabled">
                         <input id="memory-manager-enabled" type="checkbox" ${settings.enabled ? 'checked' : ''} />
@@ -184,67 +191,90 @@ function createUI() {
         </div>
     `;
 
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.id = 'memory-manager-notification';
-    notification.className = 'memory-manager-notification';
-    notification.style.display = 'none';
-    document.body.appendChild(notification);
-
     // Add settings UI to extensions menu
-    document.getElementById('extensions_settings').appendChild(settingsHtml);
+    const extensionsSettings = document.getElementById('extensions_settings');
+    if (extensionsSettings) {
+        extensionsSettings.appendChild(settingsHtml);
+        console.log("Character Memory Manager: Added settings UI to extensions panel");
+    } else {
+        console.error("Character Memory Manager: Could not find extensions_settings element");
+        // Try again after a delay to ensure SillyTavern has loaded
+        setTimeout(() => {
+            const extensionsSettingsRetry = document.getElementById('extensions_settings');
+            if (extensionsSettingsRetry) {
+                extensionsSettingsRetry.appendChild(settingsHtml);
+                console.log("Character Memory Manager: Added settings UI to extensions panel (retry)");
+                addEventListeners();
+            } else {
+                console.error("Character Memory Manager: Extensions settings panel not found, even after delay");
+            }
+        }, 2000);
+    }
 
-    // Event listeners for settings
-    document.getElementById('memory-manager-enabled').addEventListener('change', function() {
-        settings.enabled = this.checked;
-        saveSettingsDebounced();
-    });
+    addEventListeners();
 
-    document.getElementById('memory-manager-message-count').addEventListener('change', function() {
-        settings.messagesBeforeSummarize = parseInt(this.value) || 20;
-        saveSettingsDebounced();
-    });
-
-    document.getElementById('memory-manager-notifications').addEventListener('change', function() {
-        settings.showNotifications = this.checked;
-        saveSettingsDebounced();
-    });
-
-    document.getElementById('memory-manager-separate-model').addEventListener('change', function() {
-        settings.useSeparateModel = this.checked;
-        document.getElementById('memory-manager-separate-model-settings').style.display = this.checked ? 'block' : 'none';
-        saveSettingsDebounced();
-    });
-
-    document.getElementById('memory-manager-model-endpoint').addEventListener('change', function() {
-        settings.separateModelEndpoint = this.value;
-        saveSettingsDebounced();
-    });
-
-    document.getElementById('memory-manager-model-api-key').addEventListener('change', function() {
-        settings.separateModelApiKey = this.value;
-        saveSettingsDebounced();
-    });
-
-    document.getElementById('memory-manager-summarization-prompt').addEventListener('change', function() {
-        settings.summarizationPrompt = this.value;
-        saveSettingsDebounced();
-    });
-    
-    // Setup drawer toggle behavior
-    settingsHtml.querySelector('.inline-drawer-toggle').addEventListener('click', function() {
-        const icon = this.querySelector('.inline-drawer-icon');
-        const content = this.nextElementSibling;
-        if (content.style.display === 'none') {
-            content.style.display = 'block';
-            icon.classList.remove('fa-circle-chevron-down');
-            icon.classList.add('fa-circle-chevron-up');
-        } else {
-            content.style.display = 'none';
-            icon.classList.remove('fa-circle-chevron-up');
-            icon.classList.add('fa-circle-chevron-down');
+    function addEventListeners() {
+        // Event listeners for settings
+        const enabledCheckbox = document.getElementById('memory-manager-enabled');
+        if (enabledCheckbox) {
+            enabledCheckbox.addEventListener('change', function() {
+                settings.enabled = this.checked;
+                saveSettingsDebounced();
+            });
         }
-    });
+
+        const messageCountInput = document.getElementById('memory-manager-message-count');
+        if (messageCountInput) {
+            messageCountInput.addEventListener('change', function() {
+                settings.messagesBeforeSummarize = parseInt(this.value) || 20;
+                saveSettingsDebounced();
+            });
+        }
+
+        const notificationsCheckbox = document.getElementById('memory-manager-notifications');
+        if (notificationsCheckbox) {
+            notificationsCheckbox.addEventListener('change', function() {
+                settings.showNotifications = this.checked;
+                saveSettingsDebounced();
+            });
+        }
+
+        const separateModelCheckbox = document.getElementById('memory-manager-separate-model');
+        if (separateModelCheckbox) {
+            separateModelCheckbox.addEventListener('change', function() {
+                settings.useSeparateModel = this.checked;
+                const separateModelSettings = document.getElementById('memory-manager-separate-model-settings');
+                if (separateModelSettings) {
+                    separateModelSettings.style.display = this.checked ? 'block' : 'none';
+                }
+                saveSettingsDebounced();
+            });
+        }
+
+        const modelEndpointInput = document.getElementById('memory-manager-model-endpoint');
+        if (modelEndpointInput) {
+            modelEndpointInput.addEventListener('change', function() {
+                settings.separateModelEndpoint = this.value;
+                saveSettingsDebounced();
+            });
+        }
+
+        const apiKeyInput = document.getElementById('memory-manager-model-api-key');
+        if (apiKeyInput) {
+            apiKeyInput.addEventListener('change', function() {
+                settings.separateModelApiKey = this.value;
+                saveSettingsDebounced();
+            });
+        }
+
+        const promptTextarea = document.getElementById('memory-manager-summarization-prompt');
+        if (promptTextarea) {
+            promptTextarea.addEventListener('change', function() {
+                settings.summarizationPrompt = this.value;
+                saveSettingsDebounced();
+            });
+        }
+    }
 }
 
 // Hook into SillyTavern events
@@ -256,15 +286,18 @@ function onSendMessage() {
 
 // Initialize the extension
 jQuery(async () => {
-    createUI();
-    
-    // Hook into the message sending event
-    const originalSendMessageFunction = window.sendMessageOriginal || window.sendMessage;
-    
-    window.sendMessageOriginal = originalSendMessageFunction;
-    window.sendMessage = async function(...args) {
-        const result = await originalSendMessageFunction.apply(this, args);
-        onSendMessage();
-        return result;
-    };
+    // Wait for SillyTavern to fully initialize
+    setTimeout(() => {
+        createUI();
+        
+        // Hook into the message sending event
+        const originalSendMessageFunction = window.sendMessageOriginal || window.sendMessage;
+        
+        window.sendMessageOriginal = originalSendMessageFunction;
+        window.sendMessage = async function(...args) {
+            const result = await originalSendMessageFunction.apply(this, args);
+            onSendMessage();
+            return result;
+        };
+    }, 1000);
 });
