@@ -8,8 +8,8 @@ import { extension_settings } from '../../../extensions.js';
  * by dynamically summarizing chat interactions and maintaining evolving character notes.
  */
 
-// Extension name needs to match directory name
-const extensionName = 'Character-Memory-Manager';
+// Extension name needs to match directory name EXACTLY
+const extensionName = 'SillyTavern-Character-Memory-Manager';
 const displayName = 'Character Memory Manager';
 
 // Initialize settings
