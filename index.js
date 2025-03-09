@@ -2,7 +2,7 @@ import { extension_settings, getContext, saveSettingsDebounced } from "../../../
 import { callPopup, getRequestHeaders } from "../../../../script.js";
 import { summarizeChat } from "./summarization-service.js";
 import { updateCharacterNotes, isNewInformation } from "./memory-manager.js";
-import { registerSlashCommand } from "../../../slash-commands.js";
+import { SlashCommandParser } from "../../../slash-commands.js";
 
 // Initialize extension settings
 if (!extension_settings.characterMemoryManager) {
@@ -13,7 +13,7 @@ if (!extension_settings.characterMemoryManager) {
         useSeparateModel: false,
         separateModelEndpoint: "",
         separateModelApiKey: "",
-        summarizationPrompt: "Pause your chat with the user and summarize the last X messages in this array. Provide a summarized listicle of any interesting events, relationship dynamics, promises made or deeds performed including summaries of any noteworthy conversations between {{user}} and {{char}}."
+        summarizationPrompt: "Pause your chat with the user and summarize the last {{count}} messages in this array. Provide a summarized listicle of any interesting events, relationship dynamics, promises made or deeds performed including summaries of any noteworthy conversations between {{user}} and {{char}}."
     };
 }
 
@@ -99,14 +99,18 @@ async function checkAndUpdateMemories() {
 }
 
 // Register a slash command to force memory update
-registerSlashCommand('memoryupdate', async (args) => {
-    if (!settings.enabled) {
-        return "Character Memory Manager is disabled. Enable it in the extensions settings first.";
-    }
+SlashCommandParser.addCommandObject({
+    name: 'memoryupdate',
+    description: 'Trigger memory update process for the current character',
+    execute: async (args) => {
+        if (!settings.enabled) {
+            return "Character Memory Manager is disabled. Enable it in the extensions settings first.";
+        }
 
-    messageCounter = settings.messagesBeforeSummarize; // Force update
-    await checkAndUpdateMemories();
-    return "Memory update process triggered.";
+        messageCounter = settings.messagesBeforeSummarize; // Force update
+        await checkAndUpdateMemories();
+        return "Memory update process triggered.";
+    }
 });
 
 // Notification system
@@ -174,7 +178,7 @@ function createUI() {
                 <div class="memory-manager-block">
                     <label for="memory-manager-summarization-prompt">Summarization Prompt:</label>
                     <textarea id="memory-manager-summarization-prompt" rows="4">${settings.summarizationPrompt}</textarea>
-                    <div class="memory-manager-hint">Use {{user}} for user name and {{char}} for character name</div>
+                    <div class="memory-manager-hint">Use {{user}} for user name, {{char}} for character name, and {{count}} for number of messages</div>
                 </div>
             </div>
         </div>

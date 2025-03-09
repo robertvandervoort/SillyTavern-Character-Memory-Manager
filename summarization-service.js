@@ -30,7 +30,8 @@ export async function summarizeChat(
         // Create the summarization prompt
         const prompt = promptTemplate
             .replace('{{user}}', userName)
-            .replace('{{char}}', characterName);
+            .replace('{{char}}', characterName)
+            .replace('{{count}}', messages.length);
             
         // Prepare the system message and content
         const systemMessage = `You are a summarization assistant. Your task is to extract key information from conversations. ${prompt}`;
